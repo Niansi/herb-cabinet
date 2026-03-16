@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* 宣纸色 */
+  --rice-paper: #F5F0E8;
+  --rice-paper-dark: #EDE4D3;
+  /* 木柜色 */
+  --wood-dark: #4A2E18;
+  --wood-medium: #5C3A21;
+  --wood-light: #7B4B32;
+  --wood-grain: #6B3F24;
+  /* 标签色 */
+  --label-bg: #E8DCC8;
+  --label-aged: #D9C9A5;
+  --label-border: #C4B090;
+  /* 墨色 */
+  --ink-black: #2C2C2C;
+  --ink-light: #4A4A4A;
+  --ink-faded: #6B6358;
+  /* 黄铜 */
+  --brass: #B8860B;
+  --brass-dark: #8B7355;
+  --brass-light: #D4A843;
+  /* 朱红（印章色） */
+  --vermilion: #C53D43;
+  --vermilion-light: #D4626A;
+  /* 背景 */
+  --background: var(--rice-paper);
+  --foreground: var(--ink-black);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-rice-paper: var(--rice-paper);
+  --color-rice-paper-dark: var(--rice-paper-dark);
+  --color-wood-dark: var(--wood-dark);
+  --color-wood-medium: var(--wood-medium);
+  --color-wood-light: var(--wood-light);
+  --color-label-bg: var(--label-bg);
+  --color-label-aged: var(--label-aged);
+  --color-label-border: var(--label-border);
+  --color-ink-black: var(--ink-black);
+  --color-ink-light: var(--ink-light);
+  --color-ink-faded: var(--ink-faded);
+  --color-brass: var(--brass);
+  --color-brass-dark: var(--brass-dark);
+  --color-brass-light: var(--brass-light);
+  --color-vermilion: var(--vermilion);
+  --color-vermilion-light: var(--vermilion-light);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  min-height: 100vh;
+}
+
+/* 宣纸纹理背景 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(139, 115, 85, 0.03) 2px,
+      rgba(139, 115, 85, 0.03) 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 3px,
+      rgba(139, 115, 85, 0.02) 3px,
+      rgba(139, 115, 85, 0.02) 6px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--rice-paper-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--brass-dark);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brass);
+}
+
+/* 输入框基础样式 */
+input[type="number"] {
+  font-family: 'Noto Serif SC', serif;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
