@@ -73,3 +73,8 @@ export interface CartPrescription {
   checkedFees: Record<string, boolean>;
   createdAt: string;
 }
+
+/** 医馆配置 */
+export interface ClinicSettings {
+  clinicName: string;
+}

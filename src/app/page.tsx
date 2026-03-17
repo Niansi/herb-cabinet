@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { signOut } from 'next-auth/react';
 import {
   Herb,
   PrescriptionItem,
@@ -12,12 +13,12 @@ import {
 } from '@/lib/types';
 import {
   loadProfiles,
-  loadActiveProfileId,
-  saveActiveProfileId,
+  saveProfiles,
   buildDrawerGrid,
   loadPrescriptions,
-  savePrescriptions,
+  savePrescription,
   loadSettings,
+  loadClinicSettings,
   loadCart,
   saveCart,
 } from '@/lib/store';
@@ -39,6 +40,7 @@ export default function Home() {
   const [cart, setCart] = useState<CartPrescription[]>([]);
   const [rightTab, setRightTab] = useState<RightTab>('prescription');
   const [mounted, setMounted] = useState(false);
+  const [clinicName, setClinicName] = useState('藥斗子診所');
 
   // 列印预览
   const [printPrescriptions, setPrintPrescriptions] = useState<CartPrescription[] | null>(null);
@@ -47,25 +49,32 @@ export default function Home() {
   const activeProfile = profiles.find(p => p.id === activeId) ?? profiles[0];
 
   useEffect(() => {
-    const ps = loadProfiles();
-    const aid = loadActiveProfileId(ps);
-    setProfiles(ps);
-    setActiveId(aid);
-    const profile = ps.find(p => p.id === aid) ?? ps[0];
-    if (profile) setGrid(buildDrawerGrid(profile));
-    setPrescriptions(loadPrescriptions());
-    setMiscFees(loadSettings().miscFees);
-    setCart(loadCart());
-    setMounted(true);
+    async function init() {
+      const [ps, precs, settings, clinic] = await Promise.all([
+        loadProfiles(),
+        loadPrescriptions(),
+        loadSettings(),
+        loadClinicSettings(),
+      ]);
+      setProfiles(ps);
+      const firstId = ps[0]?.id ?? '';
+      setActiveId(firstId);
+      const profile = ps[0];
+      if (profile) setGrid(buildDrawerGrid(profile));
+      setPrescriptions(precs);
+      setMiscFees(settings.miscFees);
+      setClinicName(clinic.clinicName);
+      setCart(loadCart());
+      setMounted(true);
+    }
+    init();
   }, []);
 
   // 切换药柜
   const handleSwitchCabinet = useCallback((id: string) => {
     setActiveId(id);
-    saveActiveProfileId(id);
     const profile = profiles.find(p => p.id === id);
     if (profile) setGrid(buildDrawerGrid(profile));
-    // 切柜时保留当前方子，支持多药柜共同组方
   }, [profiles]);
 
   const handleAddHerb = useCallback((herb: Herb) => {
@@ -91,32 +100,32 @@ export default function Home() {
   }, []);
 
   // 将 CartPrescription 保存到历史处方
-  const saveCartPrescriptions = useCallback((cps: CartPrescription[]) => {
-    const newOnes: Prescription[] = cps.map(cp => ({
-      id: `pres-${cp.id}`,
-      name: cp.name,
-      items: cp.items,
-      createdAt: cp.createdAt,
-    }));
-    setPrescriptions(prev => {
-      // 避免重复保存（同一 id）
-      const existingIds = new Set(prev.map(p => p.id));
-      const toAdd = newOnes.filter(p => !existingIds.has(p.id));
-      if (toAdd.length === 0) return prev;
-      const next = [...toAdd, ...prev];
-      savePrescriptions(next);
-      return next;
-    });
-  }, []);
+  const saveCartPrescriptions = useCallback(async (cps: CartPrescription[]) => {
+    for (const cp of cps) {
+      const pres: Prescription = {
+        id: `pres-${cp.id}`,
+        name: cp.name,
+        items: cp.items,
+        createdAt: cp.createdAt,
+      };
+      // 避免重复保存
+      if (!prescriptions.find(p => p.id === pres.id)) {
+        await savePrescription(pres);
+        setPrescriptions(prev => {
+          if (prev.find(p => p.id === pres.id)) return prev;
+          return [pres, ...prev];
+        });
+      }
+    }
+  }, [prescriptions]);
 
-  // 投入藥簍（PrescriptionPanel 调用，投入后自动清方）
+  // 投入藥簍（PrescriptionPanel 调用）
   const handleAddToCart = useCallback((p: CartPrescription) => {
     setCart(prev => {
       const next = [...prev, p];
       saveCart(next);
       return next;
     });
-    // 不自動跳轉到候診藥簍，保留在當前藥方繼續開方
   }, []);
 
   // 当前藥方「列印」→ 打开预览（单张）
@@ -149,7 +158,6 @@ export default function Home() {
     setCart(prev => {
       const target = prev.find(p => p.id === id);
       if (!target) return prev;
-      // 将该处方的药材合并回当前药方（已有的不重复添加）
       setPrescriptionItems(items => {
         const existing = new Set(items.map(i => i.herbId));
         const toAdd = target.items.filter(i => !existing.has(i.herbId));
@@ -166,6 +174,12 @@ export default function Home() {
   const handleClearCart = useCallback(() => {
     setCart([]);
     saveCart([]);
+  }, []);
+
+  // 更新药柜后同步保存
+  const handleProfilesChange = useCallback(async (updated: CabinetProfile[]) => {
+    setProfiles(updated);
+    await saveProfiles(updated);
   }, []);
 
   if (!mounted) {
@@ -193,6 +207,25 @@ export default function Home() {
         />
       )}
 
+      {/* 医馆名称横幅 */}
+      <div
+        className="py-3 text-center border-b border-[var(--label-border)]"
+        style={{ background: 'var(--rice-paper-dark)' }}
+      >
+        <h1
+          className="text-2xl tracking-[0.5em] font-bold"
+          style={{ color: 'var(--ink-black)', fontFamily: "'Noto Serif SC', 'Songti SC', serif" }}
+        >
+          {clinicName}
+        </h1>
+        <p
+          className="text-xs mt-0.5 tracking-widest"
+          style={{ color: 'var(--ink-faded)' }}
+        >
+          中藥開方管理系統
+        </p>
+      </div>
+
       {/* 顶部导航 */}
       <header className="px-4 py-2 flex items-center justify-between">
         {/* 药柜切换 Tab */}
@@ -219,14 +252,24 @@ export default function Home() {
           ))}
         </nav>
 
-        <Link
-          href="/admin"
-          className="text-sm text-[var(--ink-faded)] hover:text-[var(--vermilion)]
-            transition-colors tracking-wider border-b border-transparent
-            hover:border-[var(--vermilion)]/40"
-        >
-          管理藥櫃和處方
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="text-sm text-[var(--ink-faded)] hover:text-[var(--vermilion)]
+              transition-colors tracking-wider border-b border-transparent
+              hover:border-[var(--vermilion)]/40"
+          >
+            管理藥櫃和處方
+          </Link>
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="text-xs text-[var(--ink-faded)] hover:text-[var(--ink-light)]
+              transition-colors tracking-wider border-b border-transparent
+              hover:border-[var(--label-border)]"
+          >
+            登出
+          </button>
+        </div>
       </header>
 
       {/* Tab 底部分隔线 */}
@@ -238,11 +281,11 @@ export default function Home() {
       {/* 主内容 */}
       <main className="px-2 md:px-6 pb-8 pt-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* 药柜 — 容器限宽+限高，内容适应；柜子内部格子超出时滚动 */}
+          {/* 药柜 */}
           <div
             className="flex-1 min-w-0 overflow-hidden flex justify-center items-start"
             style={{
-              '--cabinet-max-h': 'calc(100vh - 8rem)',
+              '--cabinet-max-h': 'calc(100vh - 10rem)',
             } as React.CSSProperties}
           >
             {activeProfile && (
@@ -293,7 +336,7 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="h-[calc(100vh-10rem)] lg:h-[calc(100vh-7rem)]">
+              <div className="h-[calc(100vh-13rem)] lg:h-[calc(100vh-10rem)]">
                 {rightTab === 'prescription' ? (
                   <PrescriptionPanel
                     items={prescriptionItems}
@@ -320,6 +363,7 @@ export default function Home() {
           </div>
         </div>
       </main>
+
     </div>
   );
 }

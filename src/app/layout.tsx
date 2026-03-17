@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "藥斗子 — 中藥開方管理",
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="zh-Hant">
       <body>
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

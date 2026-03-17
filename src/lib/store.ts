@@ -1,96 +1,97 @@
-import { CabinetProfile, DrawerCell, Prescription, AppSettings, MiscFee, CartPrescription } from './types';
-import { DEFAULT_PROFILES } from './data';
+import { CabinetProfile, DrawerCell, Prescription, AppSettings, MiscFee, CartPrescription, ClinicSettings } from './types';
 
-const PROFILES_KEY = 'herb-cabinet-profiles';
-const ACTIVE_KEY = 'herb-cabinet-active-id';
-const PRESCRIPTIONS_KEY = 'herb-cabinet-prescriptions';
-const SETTINGS_KEY = 'herb-cabinet-settings';
+// ─── Profiles (药柜) ──────────────────────────────────────────────────────────
 
-const DEFAULT_MISC_FEES: MiscFee[] = [
-  { id: 'decoction', name: '煎藥費', pricePerDose: 2, enabled: true },
-];
-
-const DEFAULT_SETTINGS: AppSettings = {
-  miscFees: DEFAULT_MISC_FEES,
-};
-
-// ─── Profiles CRUD ────────────────────────────────────────────────────────────
-
-export function loadProfiles(): CabinetProfile[] {
-  if (typeof window === 'undefined') return DEFAULT_PROFILES;
-  try {
-    const stored = localStorage.getItem(PROFILES_KEY);
-    if (stored) {
-      const parsed: CabinetProfile[] = JSON.parse(stored);
-      if (parsed.length > 0) return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_PROFILES;
+export async function loadProfiles(): Promise<CabinetProfile[]> {
+  const res = await fetch('/api/cabinets');
+  if (!res.ok) return [];
+  return res.json() as Promise<CabinetProfile[]>;
 }
 
-export function saveProfiles(profiles: CabinetProfile[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+export async function saveProfiles(profiles: CabinetProfile[]): Promise<void> {
+  await fetch('/api/cabinets', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(profiles),
+  });
 }
 
-export function loadActiveProfileId(profiles: CabinetProfile[]): string {
-  if (typeof window === 'undefined') return profiles[0]?.id ?? '';
-  try {
-    const stored = localStorage.getItem(ACTIVE_KEY);
-    if (stored && profiles.find(p => p.id === stored)) return stored;
-  } catch {
-    // ignore
-  }
-  return profiles[0]?.id ?? '';
+export async function createCabinet(name: string, description?: string): Promise<CabinetProfile | null> {
+  const res = await fetch('/api/cabinets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description }),
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<CabinetProfile>;
 }
 
-export function saveActiveProfileId(id: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(ACTIVE_KEY, id);
+export async function deleteCabinet(id: string): Promise<void> {
+  await fetch(`/api/cabinets?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-// ─── Prescriptions CRUD ───────────────────────────────────────────────────────
+// ─── Prescriptions ────────────────────────────────────────────────────────────
 
-export function loadPrescriptions(): Prescription[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const stored = localStorage.getItem(PRESCRIPTIONS_KEY);
-    if (stored) return JSON.parse(stored) as Prescription[];
-  } catch {
-    // ignore
-  }
-  return [];
+export async function loadPrescriptions(): Promise<Prescription[]> {
+  const res = await fetch('/api/prescriptions');
+  if (!res.ok) return [];
+  return res.json() as Promise<Prescription[]>;
 }
 
-export function savePrescriptions(prescriptions: Prescription[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PRESCRIPTIONS_KEY, JSON.stringify(prescriptions));
+export async function savePrescription(prescription: Prescription): Promise<void> {
+  await fetch('/api/prescriptions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prescription),
+  });
 }
 
-// ─── Settings CRUD ────────────────────────────────────────────────────────────
-
-export function loadSettings(): AppSettings {
-  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-  try {
-    const stored = localStorage.getItem(SETTINGS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as AppSettings;
-      if (parsed.miscFees?.length > 0) return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return DEFAULT_SETTINGS;
+export async function updatePrescriptionNotes(id: string, notes: string): Promise<void> {
+  await fetch(`/api/prescriptions?id=${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes }),
+  });
 }
 
-export function saveSettings(settings: AppSettings) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+export async function deletePrescription(id: string): Promise<void> {
+  await fetch(`/api/prescriptions?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-// ─── Cart CRUD ────────────────────────────────────────────────────────────────
+// ─── Settings (杂项收费) ──────────────────────────────────────────────────────
+
+export async function loadSettings(): Promise<AppSettings> {
+  const res = await fetch('/api/misc-fees');
+  if (!res.ok) return { miscFees: [{ id: 'decoction', name: '煎藥費', pricePerDose: 2, enabled: true }] };
+  const fees = await res.json() as MiscFee[];
+  return { miscFees: fees };
+}
+
+export async function saveSettings(settings: AppSettings): Promise<void> {
+  await fetch('/api/misc-fees', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings.miscFees),
+  });
+}
+
+// ─── Clinic Settings (医馆配置) ───────────────────────────────────────────────
+
+export async function loadClinicSettings(): Promise<ClinicSettings> {
+  const res = await fetch('/api/clinic-settings');
+  if (!res.ok) return { clinicName: '藥斗子診所' };
+  return res.json() as Promise<ClinicSettings>;
+}
+
+export async function saveClinicSettings(settings: ClinicSettings): Promise<void> {
+  await fetch('/api/clinic-settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+}
+
+// ─── Cart（候诊药篓，保留 localStorage 作为客户端临时状态）────────────────────
 
 const CART_KEY = 'herb-cabinet-cart';
 
@@ -136,16 +137,4 @@ export function buildDrawerGrid(profile: CabinetProfile): DrawerCell[][] {
     grid.push(row);
   }
   return grid;
-}
-
-// ─── Backward-compatible single-profile helpers (kept for minimal diff) ───────
-
-export function loadHerbs() {
-  const profiles = loadProfiles();
-  return profiles[0]?.herbs ?? [];
-}
-
-export function loadCabinetConfig() {
-  const profiles = loadProfiles();
-  return profiles[0]?.config ?? { rows: 7, cols: 8 };
 }
