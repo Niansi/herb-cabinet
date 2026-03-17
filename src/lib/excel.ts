@@ -232,10 +232,10 @@ export function importPrescriptionsFromExcel(file: File): Promise<Prescription[]
         const data = new Uint8Array(e.target!.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, {
+        const rows = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
           header: 1,
           defval: '',
-        }) as (string | number)[][];
+        });
 
         const prescriptions: Prescription[] = [];
         let i = 0;
