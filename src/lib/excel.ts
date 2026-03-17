@@ -217,3 +217,85 @@ export function exportPrescriptionsToExcel(prescriptions: Prescription[]): void 
   const dateStr = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `藥方記錄-${dateStr}.xlsx`);
 }
+
+// ─── 藥方导入 ──────────────────────────────────────────────────────────────
+
+/**
+ * 从 Excel 文件导入处方记录（与 exportPrescriptionsToExcel 格式对应）
+ * 返回解析到的处方数组，解析失败或格式不匹配返回空数组
+ */
+export function importPrescriptionsFromExcel(file: File): Promise<Prescription[]> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws, {
+          header: 1,
+          defval: '',
+        }) as (string | number)[][];
+
+        const prescriptions: Prescription[] = [];
+        let i = 0;
+
+        while (i < rows.length) {
+          const row = rows[i];
+          // 标题行格式：【N】处方名　开方时间：...
+          const titleCell = String(row[0] ?? '').trim();
+          if (!titleCell.startsWith('【')) {
+            i++;
+            continue;
+          }
+
+          // 解析处方名 & 时间
+          const nameMatch = titleCell.match(/^【\d+】(.+?)(?:　|　|開方時間：|$)/);
+          const presName = nameMatch ? nameMatch[1].trim() : titleCell;
+
+          // 下一行是列头，再下一行起是药材
+          i += 2; // 跳过列头行
+          const items: import('./types').PrescriptionItem[] = [];
+
+          while (i < rows.length) {
+            const dataRow = rows[i];
+            const herbName = String(dataRow[0] ?? '').trim();
+            // 遇到合计行或空行则结束当前处方
+            if (!herbName || herbName.startsWith('共 ')) break;
+            const weight = parseFloat(String(dataRow[1] ?? '0')) || 0;
+            const pricePerGram = parseFloat(String(dataRow[2] ?? '0')) || 0;
+            const herbId = `imported-${Date.now()}-${i}`;
+            items.push({
+              herbId,
+              herb: {
+                id: herbId,
+                name: herbName,
+                nameTraditional: herbName,
+                pricePerGram,
+                position: { row: 0, col: 0, side: 'left' },
+                category: '',
+              },
+              weight,
+            });
+            i++;
+          }
+
+          if (items.length > 0) {
+            prescriptions.push({
+              id: `imported-pres-${Date.now()}-${prescriptions.length}`,
+              name: presName,
+              items,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+
+        resolve(prescriptions);
+      } catch {
+        resolve([]);
+      }
+    };
+    reader.onerror = () => resolve([]);
+    reader.readAsArrayBuffer(file);
+  });
+}

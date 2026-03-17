@@ -48,8 +48,7 @@ export default function Home() {
     saveActiveProfileId(id);
     const profile = profiles.find(p => p.id === id);
     if (profile) setGrid(buildDrawerGrid(profile));
-    // 切柜时清空当前方子
-    setPrescriptionItems([]);
+    // 切柜时保留当前方子，支持多药柜共同组方
   }, [profiles]);
 
   const handleAddHerb = useCallback((herb: Herb) => {
@@ -138,7 +137,7 @@ export default function Home() {
             transition-colors tracking-wider border-b border-transparent
             hover:border-[var(--vermilion)]/40"
         >
-          管理藥櫃
+          管理藥櫃和處方
         </Link>
       </header>
 

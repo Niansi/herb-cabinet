@@ -1,7 +1,6 @@
 'use client';
 
 import { PrescriptionItem, Prescription } from '@/lib/types';
-import { exportPrescriptionsToExcel } from '@/lib/excel';
 
 interface PrescriptionPanelProps {
   items: PrescriptionItem[];
@@ -220,17 +219,7 @@ export default function PrescriptionPanel({
                 </button>
               </>
             )}
-            <button
-              onClick={() => exportPrescriptionsToExcel(prescriptions)}
-              disabled={prescriptions.length === 0}
-              className="px-3 py-1 text-sm rounded-sm transition-colors
-                border border-[var(--brass-dark)]/60 text-[var(--ink-faded)]
-                hover:text-[var(--ink-light)] hover:bg-[var(--brass)]/10
-                disabled:opacity-30 disabled:cursor-not-allowed"
-              title={`匯出 ${ prescriptions.length } 備歷史藥方`}
-            >
-              匯出記錄
-            </button>
+
           </div>
         </div>
       </div>
