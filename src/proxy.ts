@@ -1,9 +1,29 @@
-import { auth } from '@/auth';
+import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// proxy.ts 作为 Next.js 16 的 middleware 代理
-// 保护需要认证的路由
+// 轻量 Edge-compatible auth 配置（仅用于 middleware JWT 检验）
+// 不包含 Credentials provider（因为 bcrypt 不兼容 Edge Runtime）
+const { auth } = NextAuth({
+  providers: [],
+  session: { strategy: 'jwt' },
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) token.id = user.id;
+      return token;
+    },
+    async session({ session, token }) {
+      if (token.id && session.user) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
+  secret: process.env.AUTH_SECRET,
+});
 
 export default async function proxy(req: NextRequest) {
   const session = await auth();
