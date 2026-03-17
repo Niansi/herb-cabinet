@@ -21,9 +21,9 @@ export default function HerbLabel({ herb, side, onAdd }: HerbLabelProps) {
     >
       {/* 标签纸主体 */}
       <div
-        className="label-card relative px-1 py-2 bg-gradient-to-b from-[var(--label-tape)] to-[var(--label-aged)] border border-[var(--label-border)]"
+        className="label-card relative px-2 py-4 bg-gradient-to-b from-[var(--label-tape)] to-[var(--label-aged)] border border-[var(--label-border)]"
         style={{
-          minWidth: '28px',
+          minWidth: '38px',
           backgroundImage: `
             linear-gradient(
               to bottom,
@@ -65,7 +65,7 @@ export default function HerbLabel({ herb, side, onAdd }: HerbLabelProps) {
           className="block text-[var(--ink-black)] font-medium leading-tight tracking-wider select-none"
           style={{
             writingMode: 'vertical-rl',
-            fontSize: 'clamp(10px, 1.1vw, 14px)',
+            fontSize: 'clamp(13px, 1.5vw, 18px)',
             textShadow: '0 1px 0 rgba(255,255,255,0.4)',
           }}
         >

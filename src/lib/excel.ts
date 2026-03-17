@@ -163,12 +163,17 @@ export function exportPrescriptionsToExcel(prescriptions: Prescription[]): void 
   };
 
   prescriptions.forEach((pres, idx) => {
-    // 方标题行
+    // 方标题行（含备注）
     const dateStr = new Date(pres.createdAt).toLocaleString('zh-TW', {
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit',
     });
     setCells([`【${idx + 1}】${pres.name}　開方時間：${dateStr}`, null, null, null]);
+
+    // 如有备注，额外加一行
+    if (pres.notes) {
+      setCells([`備注：${pres.notes}`, null, null, null]);
+    }
 
     // 列头
     setCells(['藥材', '重量(克)', '單價(元/克)', '小計(元)']);
