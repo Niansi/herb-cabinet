@@ -1,47 +1,33 @@
-import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// 轻量 Edge-compatible auth 配置（仅用于 middleware JWT 检验）
-// 不包含 Credentials provider（因为 bcrypt 不兼容 Edge Runtime）
-const { auth } = NextAuth({
-  providers: [],
-  session: { strategy: 'jwt' },
-  pages: {
-    signIn: '/login',
-  },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.id = user.id;
-      return token;
-    },
-    async session({ session, token }) {
-      if (token.id && session.user) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
-  },
-  secret: process.env.AUTH_SECRET,
-});
+// Next.js 16 proxy.ts - Edge-compatible route protection
+// 直接检查 NextAuth.js v5 的 session cookie（JWT 策略）
+// 不调用 auth()，完全在 Edge Runtime 可用
 
-export default async function proxy(req: NextRequest) {
-  const session = await auth();
+export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // 公开路由，无需认证
   const isPublic = pathname.startsWith('/login')
     || pathname.startsWith('/register')
-    || pathname.startsWith('/api/auth');
+    || pathname.startsWith('/api/auth')
+    || pathname.startsWith('/_next')
+    || pathname.startsWith('/favicon');
 
-  if (!isPublic && !session) {
-    const loginUrl = new URL('/login', req.url);
-    return NextResponse.redirect(loginUrl);
+  if (isPublic) {
+    return NextResponse.next();
   }
 
-  // 已登录用户访问 /login 或 /register，重定向到首页
-  if (session && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/', req.url));
+  // 检查 NextAuth.js v5 的 session token cookie
+  // v5 使用 '__Secure-authjs.session-token'（https）或 'authjs.session-token'（http）
+  const sessionToken = req.cookies.get('__Secure-authjs.session-token')?.value
+    || req.cookies.get('authjs.session-token')?.value;
+
+  if (!sessionToken) {
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
