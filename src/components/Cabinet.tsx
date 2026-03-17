@@ -9,9 +9,13 @@ interface CabinetProps {
   config: CabinetConfig;
   cabinetName?: string;
   onAddHerb: (herb: Herb) => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
-export default function Cabinet({ grid, config, cabinetName, onAddHerb }: CabinetProps) {
+export default function Cabinet({ grid, config, cabinetName, onAddHerb, hasPrev, hasNext, onPrev, onNext }: CabinetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const startX = useRef(0);
@@ -62,8 +66,24 @@ export default function Cabinet({ grid, config, cabinetName, onAddHerb }: Cabine
 
   return (
     <div className="relative inline-flex flex-col max-w-full min-w-0">
-      {/* 药柜标题牌匾 */}
-      <div className="flex justify-center mb-3">
+      {/* 药柜标题牌匾（含左右切换按钮） */}
+      <div className="flex items-center justify-center gap-3 mb-3">
+        {/* 左侧切换按钮 */}
+        {hasPrev ? (
+          <button
+            onClick={onPrev}
+            aria-label="上一個藥櫃"
+            className="flex-shrink-0 transition-opacity hover:opacity-70 active:scale-95"
+          >
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="15" cy="15" r="14" stroke="var(--brass)" strokeWidth="1.5" fill="rgba(74,42,16,0.7)" />
+              <path d="M17 9L11 15L17 21" stroke="var(--brass-light)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : (
+          <span className="w-[30px] flex-shrink-0" />
+        )}
+
         <div
           className="relative px-10 py-3"
           style={{
@@ -115,6 +135,22 @@ export default function Cabinet({ grid, config, cabinetName, onAddHerb }: Cabine
             {cabinetName ?? '藥斗子'}
           </h1>
         </div>
+
+        {/* 右侧切换按钮 */}
+        {hasNext ? (
+          <button
+            onClick={onNext}
+            aria-label="下一個藥櫃"
+            className="flex-shrink-0 transition-opacity hover:opacity-70 active:scale-95"
+          >
+            <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="15" cy="15" r="14" stroke="var(--brass)" strokeWidth="1.5" fill="rgba(74,42,16,0.7)" />
+              <path d="M13 9L19 15L13 21" stroke="var(--brass-light)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : (
+          <span className="w-[30px] flex-shrink-0" />
+        )}
       </div>
 
       {/* 柜体顶部檐口 */}

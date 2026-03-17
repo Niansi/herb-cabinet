@@ -207,52 +207,13 @@ export default function Home() {
         />
       )}
 
-      {/* 医馆名称横幅 */}
-      <div
-        className="py-3 text-center border-b border-[var(--label-border)]"
+      {/* 顶部标题栏：三栏布局 */}
+      <header
+        className="px-4 py-3 border-b border-[var(--label-border)] flex items-center justify-between"
         style={{ background: 'var(--rice-paper-dark)' }}
       >
-        <h1
-          className="text-2xl tracking-[0.5em] font-bold"
-          style={{ color: 'var(--ink-black)', fontFamily: "'Noto Serif SC', 'Songti SC', serif" }}
-        >
-          {clinicName}
-        </h1>
-        <p
-          className="text-xs mt-0.5 tracking-widest"
-          style={{ color: 'var(--ink-faded)' }}
-        >
-          中藥開方管理系統
-        </p>
-      </div>
-
-      {/* 顶部导航 */}
-      <header className="px-4 py-2 flex items-center justify-between">
-        {/* 药柜切换 Tab */}
-        <nav className="flex items-end gap-0">
-          {profiles.map(profile => (
-            <button
-              key={profile.id}
-              onClick={() => handleSwitchCabinet(profile.id)}
-              className={`
-                relative px-4 py-2 text-sm tracking-wider transition-all duration-200
-                border-t border-l border-r
-                ${profile.id === activeId
-                  ? 'bg-[var(--rice-paper)] border-[var(--label-border)] text-[var(--ink-black)] font-medium -mb-px z-10'
-                  : 'bg-[var(--rice-paper-dark)] border-[var(--label-border)]/50 text-[var(--ink-faded)] hover:text-[var(--ink-light)] hover:bg-[var(--label-bg)]'
-                }
-              `}
-              style={{
-                borderRadius: '4px 4px 0 0',
-                marginRight: '2px',
-              }}
-            >
-              {profile.name}
-            </button>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-3">
+        {/* 左侧：管理入口 */}
+        <div className="flex-1 flex items-center">
           <Link
             href="/admin"
             className="text-sm text-[var(--ink-faded)] hover:text-[var(--vermilion)]
@@ -261,9 +222,21 @@ export default function Home() {
           >
             管理藥櫃和處方
           </Link>
+        </div>
+
+        {/* 中间：诊所名称 */}
+        <h1
+          className="text-2xl tracking-[0.5em] font-bold flex-shrink-0"
+          style={{ color: 'var(--ink-black)', fontFamily: "'Noto Serif SC', 'Songti SC', serif" }}
+        >
+          {clinicName}
+        </h1>
+
+        {/* 右侧：登出 */}
+        <div className="flex-1 flex items-center justify-end">
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-xs text-[var(--ink-faded)] hover:text-[var(--ink-light)]
+            className="text-sm text-[var(--ink-faded)] hover:text-[var(--ink-light)]
               transition-colors tracking-wider border-b border-transparent
               hover:border-[var(--label-border)]"
           >
@@ -271,12 +244,6 @@ export default function Home() {
           </button>
         </div>
       </header>
-
-      {/* Tab 底部分隔线 */}
-      <div
-        className="mx-4 h-px"
-        style={{ background: 'var(--label-border)' }}
-      />
 
       {/* 主内容 */}
       <main className="px-2 md:px-6 pb-8 pt-4">
@@ -294,6 +261,16 @@ export default function Home() {
                 config={activeProfile.config}
                 cabinetName={activeProfile.name}
                 onAddHerb={handleAddHerb}
+                hasPrev={profiles.findIndex(p => p.id === activeId) > 0}
+                hasNext={profiles.findIndex(p => p.id === activeId) < profiles.length - 1}
+                onPrev={() => {
+                  const idx = profiles.findIndex(p => p.id === activeId);
+                  handleSwitchCabinet(profiles[idx - 1].id);
+                }}
+                onNext={() => {
+                  const idx = profiles.findIndex(p => p.id === activeId);
+                  handleSwitchCabinet(profiles[idx + 1].id);
+                }}
               />
             )}
           </div>
