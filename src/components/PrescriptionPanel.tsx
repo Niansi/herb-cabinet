@@ -1,25 +1,38 @@
 'use client';
 
-import { PrescriptionItem, Prescription } from '@/lib/types';
+import { useState } from 'react';
+import { PrescriptionItem, Prescription, MiscFee, CartPrescription } from '@/lib/types';
 
 interface PrescriptionPanelProps {
   items: PrescriptionItem[];
   prescriptions: Prescription[];
+  miscFees: MiscFee[];
   onUpdateWeight: (herbId: string, weight: number) => void;
   onRemoveItem: (herbId: string) => void;
   onClear: () => void;
-  onSave: () => void;
+  onAddToCart: (p: CartPrescription) => void;
+  /** 点击「列印」时触发，传入构造好的 CartPrescription 用于预览 */
+  onPrint: (p: CartPrescription) => void;
 }
 
 export default function PrescriptionPanel({
   items,
-  prescriptions,
+  prescriptions: _prescriptions,
+  miscFees,
   onUpdateWeight,
   onRemoveItem,
   onClear,
-  onSave,
+  onAddToCart,
+  onPrint,
 }: PrescriptionPanelProps) {
-  const totalPrice = items.reduce(
+  const [doseCount, setDoseCount] = useState(1);
+  const [checkedFees, setCheckedFees] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    miscFees.forEach(f => { init[f.id] = f.enabled; });
+    return init;
+  });
+
+  const herbPrice = items.reduce(
     (sum, item) => sum + item.herb.pricePerGram * item.weight,
     0
   );
@@ -29,133 +42,32 @@ export default function PrescriptionPanel({
     0
   );
 
+  const miscTotal = miscFees.reduce((sum, fee) => {
+    if (checkedFees[fee.id]) return sum + fee.pricePerDose;
+    return sum;
+  }, 0);
+
+  const totalPrice = (herbPrice + miscTotal) * doseCount;
+
+  const buildCartPrescription = (): CartPrescription => ({
+    id: `cart-${Date.now()}`,
+    name: `藥方 ${new Date().toLocaleDateString('zh-TW')}`,
+    items: [...items],
+    doseCount,
+    checkedFees: { ...checkedFees },
+    createdAt: new Date().toISOString(),
+  });
+
+  const handleAddToCart = () => {
+    if (items.length === 0) return;
+    onAddToCart(buildCartPrescription());
+    // 投入藥簍後自動清空當前藥方
+    onClear();
+  };
+
   const handlePrint = () => {
-    const rows = items.map(item => `
-      <tr>
-        <td>${item.herb.nameTraditional}</td>
-        <td style="text-align:right">${item.weight}</td>
-        <td style="text-align:right">¥${item.herb.pricePerGram.toFixed(3)}</td>
-        <td style="text-align:right">¥${(item.herb.pricePerGram * item.weight).toFixed(2)}</td>
-      </tr>
-    `).join('');
-
-    const html = `<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <title>藥方</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
-      background: #F5F0E8;
-      color: #2C2C2C;
-      padding: 48px 56px;
-      min-height: 100vh;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .title {
-      font-size: 28px;
-      font-weight: 900;
-      letter-spacing: 0.4em;
-      color: #2C2C2C;
-      padding-bottom: 12px;
-      border-bottom: 2px solid #C53D43;
-      display: inline-block;
-    }
-    .date {
-      font-size: 13px;
-      color: #6B6358;
-      margin-top: 8px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 24px 0;
-    }
-    th {
-      font-size: 13px;
-      font-weight: 600;
-      color: #4A4A4A;
-      border-bottom: 1px solid #C4B090;
-      padding: 8px 10px;
-      text-align: left;
-    }
-    th:not(:first-child) { text-align: right; }
-    td {
-      font-size: 14px;
-      padding: 9px 10px;
-      border-bottom: 1px solid rgba(196,176,144,0.4);
-    }
-    tr:nth-child(even) td { background: rgba(232,220,200,0.3); }
-    .footer {
-      margin-top: 24px;
-      border-top: 1px solid #C4B090;
-      padding-top: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-    .footer-left { font-size: 13px; color: #6B6358; line-height: 1.8; }
-    .total-price { font-size: 26px; font-weight: 700; color: #C53D43; }
-    .total-label { font-size: 13px; color: #4A4A4A; margin-right: 8px; }
-    .seal {
-      margin-top: 48px;
-      text-align: right;
-      font-size: 12px;
-      color: #B8B0A0;
-      letter-spacing: 0.1em;
-    }
-    @media print {
-      body { padding: 24px 32px; background: white; }
-      @page { margin: 1.5cm; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="title">藥　方</div>
-    <div class="date">開方日期：${new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>藥材</th>
-        <th style="text-align:right">重量（克）</th>
-        <th style="text-align:right">單價（元/克）</th>
-        <th style="text-align:right">小計（元）</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="footer">
-    <div class="footer-left">
-      <div>共 ${items.length} 味藥</div>
-      <div>總重 ${totalWeight.toFixed(1)} 克</div>
-    </div>
-    <div>
-      <span class="total-label">合　計</span>
-      <span class="total-price">¥${totalPrice.toFixed(2)}</span>
-    </div>
-  </div>
-  <div class="seal">藥斗子 · 中藥開方管理系統</div>
-  <script>window.onload = function(){ window.print(); }<\/script>
-</body>
-</html>`;
-
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (win) {
-      win.onafterprint = () => URL.revokeObjectURL(url);
-    } else {
-      URL.revokeObjectURL(url);
-      alert('請允許彈出視窗以使用列印功能');
-    }
+    if (items.length === 0) return;
+    onPrint(buildCartPrescription());
   };
 
   return (
@@ -189,17 +101,18 @@ export default function PrescriptionPanel({
           >
             藥方
           </h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
             {items.length > 0 && (
               <>
                 <button
-                  onClick={onSave}
+                  onClick={handleAddToCart}
                   className="px-3 py-1 text-sm rounded-sm transition-colors
-                    border border-[var(--brass-dark)] text-[var(--ink-light)]
-                    hover:bg-[var(--brass)]/10"
-                  title="存入歷史記錄"
+                    border text-[var(--ink-light)]
+                    hover:bg-green-900/10"
+                  style={{ borderColor: '#4a7a4a' }}
+                  title="暫存至候診藥簍並清空當前藥方"
                 >
-                  存方
+                  投入藥簍
                 </button>
                 <button
                   onClick={handlePrint}
@@ -219,7 +132,6 @@ export default function PrescriptionPanel({
                 </button>
               </>
             )}
-
           </div>
         </div>
       </div>
@@ -303,6 +215,50 @@ export default function PrescriptionPanel({
             <span>共 {items.length} 味藥</span>
             <span>總重 {totalWeight.toFixed(1)} 克</span>
           </div>
+
+          {/* 杂项收费 */}
+          <div className="space-y-1 mb-2">
+            {miscFees.map(fee => (
+              <label
+                key={fee.id}
+                className="flex items-center gap-2 text-sm text-[var(--ink-light)] cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={!!checkedFees[fee.id]}
+                  onChange={e => setCheckedFees(prev => ({
+                    ...prev,
+                    [fee.id]: e.target.checked,
+                  }))}
+                  className="accent-[var(--vermilion)]"
+                />
+                <span>{fee.name}</span>
+                <span className="text-[var(--ink-faded)] text-xs">
+                  ¥{fee.pricePerDose.toFixed(2)}/副
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {/* 副数 */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm text-[var(--ink-light)]">開</span>
+            <input
+              type="number"
+              value={doseCount}
+              onChange={e => {
+                const val = parseInt(e.target.value);
+                setDoseCount(isNaN(val) || val < 1 ? 1 : val);
+              }}
+              min={1}
+              className="w-12 px-1 py-0.5 text-center text-sm
+                bg-transparent border-b border-[var(--ink-faded)]/30
+                focus:border-[var(--vermilion)] focus:outline-none
+                transition-colors"
+            />
+            <span className="text-sm text-[var(--ink-light)]">副</span>
+          </div>
+
           <div className="flex justify-between items-baseline">
             <span className="text-sm text-[var(--ink-light)]">合計</span>
             <span

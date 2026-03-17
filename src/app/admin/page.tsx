@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Herb, CabinetProfile, Prescription } from '@/lib/types';
-import { loadProfiles, saveProfiles, loadPrescriptions, savePrescriptions } from '@/lib/store';
+import { Herb, CabinetProfile, Prescription, MiscFee, CartPrescription } from '@/lib/types';
+import { loadProfiles, saveProfiles, loadPrescriptions, savePrescriptions, loadSettings, saveSettings } from '@/lib/store';
 import { DEFAULT_PROFILES } from '@/lib/data';
 import {
   exportCabinetToExcel,
@@ -11,10 +11,11 @@ import {
   exportPrescriptionsToExcel,
   importPrescriptionsFromExcel,
 } from '@/lib/excel';
+import PrintPreviewModal from '@/components/PrintPreviewModal';
 import Link from 'next/link';
 
 type TabKey = 'herbs' | 'config';
-type SectionKey = 'cabinet' | 'prescription';
+type SectionKey = 'cabinet' | 'prescription' | 'miscfee';
 
 export default function AdminPage() {
   const [profiles, setProfiles] = useState<CabinetProfile[]>([]);
@@ -27,6 +28,9 @@ export default function AdminPage() {
   // 编辑药材弹窗
   const [editingHerb, setEditingHerb] = useState<Herb | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+
+  // 杂项收费
+  const [miscFees, setMiscFees] = useState<MiscFee[]>([]);
 
   // 搜索
   const [search, setSearch] = useState('');
@@ -48,12 +52,19 @@ export default function AdminPage() {
   // 日期筛选
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  // 多选
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 备注内联编辑（presId -> 编辑中的值）
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
+  // 列印预览
+  const [adminPrintPres, setAdminPrintPres] = useState<CartPrescription[] | null>(null);
 
   useEffect(() => {
     const ps = loadProfiles();
     setProfiles(ps);
     setActiveCabinetId(ps[0]?.id ?? '');
     setPrescriptions(loadPrescriptions());
+    setMiscFees(loadSettings().miscFees);
     setMounted(true);
   }, []);
 
@@ -223,10 +234,51 @@ export default function AdminPage() {
       savePrescriptions(next);
       return next;
     });
+    setSelectedIds(prev => { const s = new Set(prev); s.delete(id); return s; });
   };
 
   const handleExportPrescriptions = () => {
     exportPrescriptionsToExcel(prescriptions);
+  };
+
+  // 更新备注（inline edit -> 保存）
+  const handleSaveNotes = (id: string) => {
+    const notes = editingNotes[id] ?? '';
+    setPrescriptions(prev => {
+      const next = prev.map(p => p.id === id ? { ...p, notes } : p);
+      savePrescriptions(next);
+      return next;
+    });
+    setEditingNotes(prev => { const n = { ...prev }; delete n[id]; return n; });
+    showSaved();
+  };
+
+  // 全选 / 取消全选
+  const handleToggleSelectAll = (ids: string[]) => {
+    if (ids.every(id => selectedIds.has(id))) {
+      setSelectedIds(prev => {
+        const s = new Set(prev);
+        ids.forEach(id => s.delete(id));
+        return s;
+      });
+    } else {
+      setSelectedIds(prev => new Set([...prev, ...ids]));
+    }
+  };
+
+  // 列印选中的处方
+  const handlePrintSelected = (filtered: Prescription[]) => {
+    const targets = filtered.filter(p => selectedIds.has(p.id));
+    if (targets.length === 0) return;
+    const cps: CartPrescription[] = targets.map(p => ({
+      id: `admin-${p.id}`,
+      name: p.name,
+      items: p.items,
+      doseCount: 1,
+      checkedFees: {},
+      createdAt: p.createdAt,
+    }));
+    setAdminPrintPres(cps);
   };
 
   const handlePresImportTrigger = () => {
@@ -270,6 +322,15 @@ export default function AdminPage() {
       className="min-h-screen relative z-10"
       style={{ background: 'var(--rice-paper)' }}
     >
+      {/* 列印预览模态框 */}
+      {adminPrintPres && (
+        <PrintPreviewModal
+          prescriptions={adminPrintPres}
+          miscFees={[]}
+          onClose={() => setAdminPrintPres(null)}
+          onBeforePrint={() => {/* admin 中处方已存储，无需再保存 */}}
+        />
+      )}
       {/* 顶栏 */}
       <header
         className="px-6 py-3 flex items-center justify-between border-b border-[var(--label-border)]"
@@ -286,7 +347,7 @@ export default function AdminPage() {
             className="text-xl font-bold tracking-widest"
             style={{ color: 'var(--ink-black)' }}
           >
-            {section === 'cabinet' ? '管理藥櫃' : '管理處方'}
+            {section === 'cabinet' ? '管理藥櫃' : section === 'prescription' ? '管理處方' : '雜項收費'}
           </h1>
         </div>
         {saved && (
@@ -327,6 +388,18 @@ export default function AdminPage() {
               `}
             >
               管理處方
+            </button>
+            <button
+              onClick={() => setSection('miscfee')}
+              className={`
+                flex-1 py-2.5 text-xs tracking-wider transition-colors
+                ${section === 'miscfee'
+                  ? 'text-[var(--vermilion)] border-b-2 border-[var(--vermilion)] -mb-px'
+                  : 'text-[var(--ink-faded)] hover:text-[var(--ink-light)]'
+                }
+              `}
+            >
+              雜項收費
             </button>
           </div>
 
@@ -402,6 +475,24 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {section === 'miscfee' && (
+            <div className="flex-1 overflow-y-auto px-3 pt-4">
+              <div className="text-xs text-[var(--ink-faded)] tracking-wider mb-2">
+                收費項目列表
+              </div>
+              <div className="space-y-1">
+                {miscFees.map(fee => (
+                  <div
+                    key={fee.id}
+                    className="px-2 py-1.5 text-xs text-[var(--ink-faded)]"
+                  >
+                    {fee.name} — ¥{fee.pricePerDose}/副
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </aside>
@@ -669,6 +760,12 @@ export default function AdminPage() {
               return true;
             });
 
+            const filteredIds = filtered.map(p => p.id);
+            const allSelected = filteredIds.length > 0
+              && filteredIds.every(id => selectedIds.has(id));
+            const someSelected = filteredIds.some(id => selectedIds.has(id));
+            const selectedCount = filteredIds.filter(id => selectedIds.has(id)).length;
+
             return (
               <div className="px-6 pt-4">
                 {/* 操作栏 */}
@@ -676,6 +773,15 @@ export default function AdminPage() {
                   <h2 className="text-base font-medium tracking-widest text-[var(--ink-black)] mr-2">
                     已存處方
                   </h2>
+                  {someSelected && (
+                    <button
+                      onClick={() => handlePrintSelected(filtered)}
+                      className="px-4 py-1.5 text-sm border border-[var(--vermilion)]/40
+                        text-[var(--vermilion)] hover:bg-[var(--vermilion)]/10 transition-colors"
+                    >
+                      列印選中（{selectedCount}）
+                    </button>
+                  )}
                   <button
                     onClick={handleExportPrescriptions}
                     disabled={prescriptions.length === 0}
@@ -745,7 +851,7 @@ export default function AdminPage() {
                       text-[var(--ink-faded)] border border-dashed border-[var(--label-border)]"
                   >
                     <p className="text-lg mb-2">暫無歷史處方</p>
-                    <p className="text-sm">在首頁開方後點擊「存方」，或從 Excel 匯入</p>
+                    <p className="text-sm">在首頁開方後列印，或從 Excel 匯入</p>
                   </div>
                 ) : filtered.length === 0 ? (
                   <div
@@ -755,7 +861,23 @@ export default function AdminPage() {
                     <p className="text-base">所選日期範圍內無處方記錄</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 pb-8">
+                    {/* 全选行 */}
+                    <div className="flex items-center gap-2 px-1">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={el => {
+                          if (el) el.indeterminate = someSelected && !allSelected;
+                        }}
+                        onChange={() => handleToggleSelectAll(filteredIds)}
+                        className="accent-[var(--vermilion)] w-4 h-4"
+                      />
+                      <span className="text-xs text-[var(--ink-faded)]">
+                        全選 / 取消全選（當前顯示 {filtered.length} 張）
+                      </span>
+                    </div>
+
                     {filtered.map((pres, idx) => {
                       const totalWeight = pres.items.reduce((s, it) => s + it.weight, 0);
                       const totalPrice = pres.items.reduce(
@@ -769,16 +891,34 @@ export default function AdminPage() {
                         hour: '2-digit',
                         minute: '2-digit',
                       });
+                      const isSelected = selectedIds.has(pres.id);
+                      const notesVal = editingNotes[pres.id] !== undefined
+                        ? editingNotes[pres.id]
+                        : (pres.notes ?? '');
+                      const isEditingThisNote = editingNotes[pres.id] !== undefined;
 
                       return (
                         <div
                           key={pres.id}
-                          className="border border-[var(--label-border)]"
+                          className={`border transition-colors ${isSelected
+                            ? 'border-[var(--vermilion)]/40'
+                            : 'border-[var(--label-border)]'}`}
                           style={{ background: 'var(--rice-paper)' }}
                         >
                           {/* 处方头部 */}
-                          <div className="flex items-center px-4 py-3">
-                            <span className="text-xs text-[var(--ink-faded)] w-7 shrink-0">
+                          <div className="flex items-center px-4 py-3 gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => setSelectedIds(prev => {
+                                const s = new Set(prev);
+                                if (s.has(pres.id)) s.delete(pres.id);
+                                else s.add(pres.id);
+                                return s;
+                              })}
+                              className="accent-[var(--vermilion)] w-4 h-4 shrink-0"
+                            />
+                            <span className="text-xs text-[var(--ink-faded)] w-6 shrink-0">
                               #{idx + 1}
                             </span>
                             <span
@@ -786,22 +926,40 @@ export default function AdminPage() {
                             >
                               {pres.name}
                             </span>
-                            <span className="text-xs text-[var(--ink-faded)] mr-4">
+                            <span className="text-xs text-[var(--ink-faded)] mr-4 shrink-0">
                               {dateStr}
                             </span>
-                            <span className="text-xs text-[var(--ink-faded)] mr-4">
+                            <span className="text-xs text-[var(--ink-faded)] mr-4 shrink-0">
                               {pres.items.length} 味 · {totalWeight.toFixed(1)} 克
                             </span>
                             <span
-                              className="text-sm font-medium mr-4"
+                              className="text-sm font-medium mr-4 shrink-0"
                               style={{ color: 'var(--vermilion)' }}
                             >
                               ¥{totalPrice.toFixed(2)}
                             </span>
                             <button
+                              onClick={() => {
+                                const cp: CartPrescription = {
+                                  id: `admin-${pres.id}`,
+                                  name: pres.name,
+                                  items: pres.items,
+                                  doseCount: 1,
+                                  checkedFees: {},
+                                  createdAt: pres.createdAt,
+                                };
+                                setAdminPrintPres([cp]);
+                              }}
+                              className="text-[var(--ink-faded)] hover:text-[var(--ink-black)]
+                                transition-colors text-xs px-1 shrink-0"
+                              title="列印此處方"
+                            >
+                              列印
+                            </button>
+                            <button
                               onClick={() => handleDeletePrescription(pres.id)}
                               className="text-[var(--ink-faded)] hover:text-[var(--vermilion)]
-                                transition-colors text-xs px-1"
+                                transition-colors text-xs px-1 shrink-0"
                               title="刪除此處方"
                             >
                               刪除
@@ -854,6 +1012,62 @@ export default function AdminPage() {
                                 ))}
                               </tbody>
                             </table>
+
+                            {/* 备注 */}
+                            <div className="mt-3 flex items-start gap-2">
+                              <span className="text-xs text-[var(--ink-faded)] shrink-0 mt-1">
+                                備注：
+                              </span>
+                              {isEditingThisNote ? (
+                                <>
+                                  <textarea
+                                    value={notesVal}
+                                    onChange={e => setEditingNotes(prev => ({
+                                      ...prev, [pres.id]: e.target.value,
+                                    }))}
+                                    rows={2}
+                                    className="flex-1 text-xs px-2 py-1 border border-[var(--label-border)]
+                                      bg-transparent focus:outline-none focus:border-[var(--brass)]
+                                      transition-colors resize-none"
+                                    placeholder="輸入備注…"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => handleSaveNotes(pres.id)}
+                                    className="text-xs text-green-700 hover:text-green-900
+                                      transition-colors shrink-0"
+                                  >
+                                    儲存
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingNotes(prev => {
+                                      const n = { ...prev }; delete n[pres.id]; return n;
+                                    })}
+                                    className="text-xs text-[var(--ink-faded)] hover:text-[var(--vermilion)]
+                                      transition-colors shrink-0"
+                                  >
+                                    取消
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="flex-1 text-xs text-[var(--ink-light)] whitespace-pre-wrap">
+                                    {pres.notes || (
+                                      <span className="text-[var(--ink-faded)] italic">無備注</span>
+                                    )}
+                                  </span>
+                                  <button
+                                    onClick={() => setEditingNotes(prev => ({
+                                      ...prev, [pres.id]: pres.notes ?? '',
+                                    }))}
+                                    className="text-xs text-[var(--ink-faded)] hover:text-[var(--brass)]
+                                      transition-colors shrink-0"
+                                  >
+                                    編輯
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -863,6 +1077,83 @@ export default function AdminPage() {
               </div>
             );
           })()}
+
+          {/* ===== 雜項收費设置 ===== */}
+          {section === 'miscfee' && (
+            <div className="px-6 pt-4">
+              <h2 className="text-base font-medium tracking-widest text-[var(--ink-black)] mb-4">
+                雜項收費設定
+              </h2>
+              <div className="max-w-md">
+                <div
+                  className="p-6 border border-[var(--label-border)]"
+                  style={{ background: 'var(--rice-paper)' }}
+                >
+                  <p className="text-xs text-[var(--ink-faded)] mb-4">
+                    設定開方時可勾選的附加收費項目，費用按副計算。
+                  </p>
+                  <div className="space-y-4">
+                    {miscFees.map((fee, idx) => (
+                      <div
+                        key={fee.id}
+                        className="flex items-center gap-3 py-2 border-b border-[var(--label-border)]/40"
+                      >
+                        <span className="text-sm text-[var(--ink-black)] font-medium w-20 shrink-0">
+                          {fee.name}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-[var(--ink-faded)]">¥</span>
+                          <input
+                            type="number"
+                            value={fee.pricePerDose}
+                            onChange={e => {
+                              const val = parseFloat(e.target.value);
+                              setMiscFees(prev => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], pricePerDose: isNaN(val) ? 0 : val };
+                                return next;
+                              });
+                            }}
+                            min={0}
+                            step="0.5"
+                            className="w-20 px-2 py-1 border border-[var(--label-border)]
+                              bg-transparent focus:outline-none focus:border-[var(--brass)]
+                              text-center text-sm"
+                          />
+                          <span className="text-xs text-[var(--ink-faded)]">元/副</span>
+                        </div>
+                        <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={fee.enabled}
+                            onChange={e => {
+                              setMiscFees(prev => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], enabled: e.target.checked };
+                                return next;
+                              });
+                            }}
+                            className="accent-[var(--vermilion)]"
+                          />
+                          <span className="text-xs text-[var(--ink-faded)]">預設勾選</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      saveSettings({ miscFees });
+                      showSaved();
+                    }}
+                    className="mt-6 px-6 py-2 text-sm border border-[var(--vermilion)]/40
+                      text-[var(--vermilion)] hover:bg-[var(--vermilion)]/10 transition-colors"
+                  >
+                    儲存設定
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
