@@ -1,9 +1,18 @@
-import { CabinetProfile, DrawerCell, Prescription } from './types';
+import { CabinetProfile, DrawerCell, Prescription, AppSettings, MiscFee, CartPrescription } from './types';
 import { DEFAULT_PROFILES } from './data';
 
 const PROFILES_KEY = 'herb-cabinet-profiles';
 const ACTIVE_KEY = 'herb-cabinet-active-id';
 const PRESCRIPTIONS_KEY = 'herb-cabinet-prescriptions';
+const SETTINGS_KEY = 'herb-cabinet-settings';
+
+const DEFAULT_MISC_FEES: MiscFee[] = [
+  { id: 'decoction', name: '煎藥費', pricePerDose: 2, enabled: true },
+];
+
+const DEFAULT_SETTINGS: AppSettings = {
+  miscFees: DEFAULT_MISC_FEES,
+};
 
 // ─── Profiles CRUD ────────────────────────────────────────────────────────────
 
@@ -58,6 +67,47 @@ export function loadPrescriptions(): Prescription[] {
 export function savePrescriptions(prescriptions: Prescription[]) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(PRESCRIPTIONS_KEY, JSON.stringify(prescriptions));
+}
+
+// ─── Settings CRUD ────────────────────────────────────────────────────────────
+
+export function loadSettings(): AppSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  try {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as AppSettings;
+      if (parsed.miscFees?.length > 0) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_SETTINGS;
+}
+
+export function saveSettings(settings: AppSettings) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ─── Cart CRUD ────────────────────────────────────────────────────────────────
+
+const CART_KEY = 'herb-cabinet-cart';
+
+export function loadCart(): CartPrescription[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(CART_KEY);
+    if (stored) return JSON.parse(stored) as CartPrescription[];
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export function saveCart(cart: CartPrescription[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
 // ─── Grid builder ─────────────────────────────────────────────────────────────

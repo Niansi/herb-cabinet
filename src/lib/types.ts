@@ -29,6 +29,8 @@ export interface Prescription {
   name: string;
   items: PrescriptionItem[];
   createdAt: string;
+  /** 備注（可選） */
+  notes?: string;
 }
 
 export interface DrawerCell {
@@ -38,6 +40,15 @@ export interface DrawerCell {
   right?: Herb;
 }
 
+/** 杂项收费项 */
+export interface MiscFee {
+  id: string;
+  name: string;
+  /** 每副价格 */
+  pricePerDose: number;
+  enabled: boolean;
+}
+
 /** 一个药柜档案（支持多柜） */
 export interface CabinetProfile {
   id: string;
@@ -45,5 +56,20 @@ export interface CabinetProfile {
   description?: string;
   config: CabinetConfig;
   herbs: Herb[];
+  createdAt: string;
+}
+
+/** 全局设置 */
+export interface AppSettings {
+  miscFees: MiscFee[];
+}
+
+/** 候診藥簍中的一張處方（含副數、雜項費用選擇） */
+export interface CartPrescription {
+  id: string;
+  name: string;
+  items: PrescriptionItem[];
+  doseCount: number;
+  checkedFees: Record<string, boolean>;
   createdAt: string;
 }
