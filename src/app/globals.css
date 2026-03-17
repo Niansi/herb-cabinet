@@ -10,10 +10,14 @@
   --wood-medium: #5C3A21;
   --wood-light: #7B4B32;
   --wood-grain: #6B3F24;
+  --wood-highlight: #9B6040;
+  --wood-shadow: #2E1A0A;
   /* 标签色 */
   --label-bg: #E8DCC8;
   --label-aged: #D9C9A5;
   --label-border: #C4B090;
+  --label-tape: #F0E6C8;
+  --label-ink-red: #8B2020;
   /* 墨色 */
   --ink-black: #2C2C2C;
   --ink-light: #4A4A4A;
@@ -22,6 +26,7 @@
   --brass: #B8860B;
   --brass-dark: #8B7355;
   --brass-light: #D4A843;
+  --brass-rim: #C9A227;
   /* 朱红（印章色） */
   --vermilion: #C53D43;
   --vermilion-light: #D4626A;
@@ -38,6 +43,8 @@
   --color-wood-dark: var(--wood-dark);
   --color-wood-medium: var(--wood-medium);
   --color-wood-light: var(--wood-light);
+  --color-wood-highlight: var(--wood-highlight);
+  --color-wood-shadow: var(--wood-shadow);
   --color-label-bg: var(--label-bg);
   --color-label-aged: var(--label-aged);
   --color-label-border: var(--label-border);
@@ -47,6 +54,7 @@
   --color-brass: var(--brass);
   --color-brass-dark: var(--brass-dark);
   --color-brass-light: var(--brass-light);
+  --color-brass-rim: var(--brass-rim);
   --color-vermilion: var(--vermilion);
   --color-vermilion-light: var(--vermilion-light);
 }
@@ -58,7 +66,7 @@ body {
   min-height: 100vh;
 }
 
-/* 宣纸纹理背景 */
+/* 宣纸网格线纹理 */
 body::before {
   content: '';
   position: fixed;
@@ -80,6 +88,40 @@ body::before {
     );
   pointer-events: none;
   z-index: 0;
+}
+
+/* 宣纸噪点颗粒感（SVG feTurbulence） */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23p)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 木纹纹理辅助类 */
+.wood-texture {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.012 0.7' numOctaves='4' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  background-blend-mode: multiply;
+}
+
+/* 标签悬停动效 */
+.label-card {
+  transform-style: preserve-3d;
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s ease;
+  will-change: transform;
+}
+
+.label-card:hover {
+  transform: scale(1.22) translateY(-3px) rotateZ(-1.5deg);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.32),
+    0 3px 6px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(196, 176, 144, 0.4);
 }
 
 /* 滚动条样式 */

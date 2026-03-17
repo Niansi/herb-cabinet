@@ -12,26 +12,27 @@ export default function Drawer({ cell, onAddHerb }: DrawerProps) {
   return (
     <div
       className={`
-        relative flex
-        bg-gradient-to-b from-[var(--wood-light)] via-[var(--wood-medium)] to-[var(--wood-dark)]
-        border border-[var(--wood-dark)]
+        relative flex wood-texture
+        border border-[var(--wood-shadow)]
         rounded-sm overflow-visible
         aspect-square
       `}
       style={{
+        background: `linear-gradient(
+          180deg,
+          var(--wood-highlight) 0%,
+          var(--wood-light) 8%,
+          var(--wood-medium) 50%,
+          var(--wood-dark) 92%,
+          var(--wood-shadow) 100%
+        )`,
         boxShadow: `
-          inset 0 1px 0 rgba(255,255,255,0.08),
-          inset 0 -2px 4px rgba(0,0,0,0.3),
-          0 1px 2px rgba(0,0,0,0.2)
-        `,
-        backgroundImage: `
-          repeating-linear-gradient(
-            90deg,
-            transparent,
-            transparent 3px,
-            rgba(0,0,0,0.03) 3px,
-            rgba(0,0,0,0.03) 6px
-          )
+          inset 0 2px 0 rgba(255,255,255,0.12),
+          inset 0 -3px 6px rgba(0,0,0,0.35),
+          inset 2px 0 3px rgba(255,255,255,0.06),
+          inset -2px 0 3px rgba(0,0,0,0.15),
+          0 2px 4px rgba(0,0,0,0.25),
+          0 1px 0 rgba(255,255,255,0.05)
         `,
       }}
     >
@@ -39,8 +40,8 @@ export default function Drawer({ cell, onAddHerb }: DrawerProps) {
       <div
         className="absolute inset-[3px] rounded-sm"
         style={{
-          boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.3)',
-          background: 'rgba(0,0,0,0.08)',
+          boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.35), inset 0 1px 3px rgba(0,0,0,0.2)',
+          background: 'rgba(0,0,0,0.1)',
         }}
       />
 
@@ -62,25 +63,51 @@ export default function Drawer({ cell, onAddHerb }: DrawerProps) {
         </div>
       </div>
 
-      {/* 黄铜把手 */}
+      {/* 黄铜拉手 */}
       <div
-        className="absolute left-1/2 bottom-[6px] -translate-x-1/2 z-20"
-        style={{
-          width: 'clamp(12px, 1.5vw, 20px)',
-          height: 'clamp(5px, 0.6vw, 8px)',
-          background: `linear-gradient(
-            180deg,
-            var(--brass-light) 0%,
-            var(--brass) 40%,
-            var(--brass-dark) 100%
-          )`,
-          borderRadius: '0 0 4px 4px',
-          boxShadow: `
-            0 1px 2px rgba(0,0,0,0.3),
-            inset 0 1px 0 rgba(255,255,255,0.3)
-          `,
-        }}
-      />
+        className="absolute left-1/2 bottom-[5px] -translate-x-1/2 z-20"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}
+      >
+        {/* 底座螺丝钉 */}
+        <div
+          style={{
+            width: 'clamp(16px, 2vw, 26px)',
+            height: 'clamp(3px, 0.35vw, 5px)',
+            background: `linear-gradient(
+              180deg,
+              var(--brass-light) 0%,
+              var(--brass-dark) 100%
+            )`,
+            borderRadius: '2px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.4)',
+          }}
+        />
+        {/* 拉手圆柱主体 */}
+        <div
+          style={{
+            width: 'clamp(12px, 1.5vw, 20px)',
+            height: 'clamp(5px, 0.6vw, 8px)',
+            background: `linear-gradient(
+              180deg,
+              rgba(255,255,255,0.3) 0%,
+              var(--brass-light) 10%,
+              var(--brass-rim) 30%,
+              var(--brass) 55%,
+              var(--brass-dark) 82%,
+              #5A4A2A 100%
+            )`,
+            borderRadius: '2px 2px 4px 4px',
+            boxShadow: `
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              inset 0 -1px 0 rgba(0,0,0,0.4),
+              inset 1px 0 1px rgba(255,255,255,0.15),
+              inset -1px 0 1px rgba(0,0,0,0.2),
+              0 2px 4px rgba(0,0,0,0.45),
+              0 1px 2px rgba(0,0,0,0.25)
+            `,
+          }}
+        />
+      </div>
     </div>
   );
 }
