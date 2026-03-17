@@ -200,10 +200,17 @@ export default function AdminPage() {
 
   const handleImportConfirm = () => {
     if (!importPreview || !activeProfile) return;
+    const mergedConfig = importPreview.config
+      ? {
+          rows: importPreview.config.rows,
+          cols: importPreview.config.cols,
+          slotCount: (importPreview.config.slotCount ?? activeProfile.config.slotCount ?? 2) as 1 | 2 | 3 | 4,
+        }
+      : activeProfile.config;
     const updated: CabinetProfile = {
       ...activeProfile,
       herbs: importPreview.herbs,
-      ...(importPreview.config ? { config: importPreview.config } : {}),
+      config: mergedConfig,
       ...(importPreview.name ? { name: importPreview.name } : {}),
       ...(importPreview.description !== undefined ? { description: importPreview.description } : {}),
     };
@@ -528,7 +535,12 @@ export default function AdminPage() {
                               </td>
                               <td className="px-3 py-2">¥{herb.pricePerGram.toFixed(3)}</td>
                               <td className="px-3 py-2 text-[var(--ink-faded)]">
-                                第{herb.position.row + 1}行第{herb.position.col + 1}列{herb.position.side === 'left' ? '（左）' : '（右）'}
+                                第{herb.position.row + 1}行第{herb.position.col + 1}列
+                                {herb.position.side === 'left' ? '（左）'
+                                  : herb.position.side === 'right' ? '（右）'
+                                  : herb.position.side === 'top' ? '（上）'
+                                  : herb.position.side === 'bottom' ? '（下）'
+                                  : '（居中）'}
                               </td>
                               <td className="px-3 py-2">
                                 <div className="flex gap-3">
@@ -574,11 +586,51 @@ export default function AdminPage() {
                             className="w-20 px-2 py-1 border border-[var(--label-border)] bg-transparent focus:outline-none focus:border-[var(--brass)] text-center text-sm" />
                           <span className="text-xs text-[var(--ink-faded)]">（1–20）</span>
                         </div>
+
+                        {/* 格子數量配置 */}
+                        <div className="flex items-start gap-4">
+                          <label className="w-24 text-sm text-[var(--ink-light)] pt-1 shrink-0">格子數量</label>
+                          <div className="flex-1">
+                            <div className="grid grid-cols-2 gap-2">
+                              {([
+                                [1, '1 格', '居中展示 1 個藥材'],
+                                [2, '2 格', '左右各 1 個（縱向）'],
+                                [3, '3 格', '左右縱向 + 上橫向'],
+                                [4, '4 格', '左右縱向 + 上下橫向'],
+                              ] as [number, string, string][]).map(([val, label, desc]) => {
+                                const isActive = (activeProfile.config.slotCount ?? 2) === val;
+                                return (
+                                  <button
+                                    key={val}
+                                    onClick={() => updateProfile({
+                                      ...activeProfile,
+                                      config: { ...activeProfile.config, slotCount: val as 1 | 2 | 3 | 4 },
+                                    })}
+                                    className={`
+                                      flex flex-col items-start px-3 py-2 border text-left transition-colors
+                                      ${isActive
+                                        ? 'border-[var(--vermilion)] bg-[var(--vermilion)]/5 text-[var(--vermilion)]'
+                                        : 'border-[var(--label-border)] text-[var(--ink-faded)] hover:border-[var(--brass)] hover:text-[var(--ink-light)]'
+                                      }
+                                    `}
+                                  >
+                                    <span className="text-sm font-medium">{label}</span>
+                                    <span className="text-xs mt-0.5 leading-snug opacity-80">{desc}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <p className="text-xs text-[var(--ink-faded)] mt-2">
+                              更改格子數量後，已配置的藥材位置需重新調整。
+                            </p>
+                          </div>
+                        </div>
                       </div>
                       <div className="mt-4 p-3 border border-[var(--label-border)]/60 text-xs text-[var(--ink-faded)]">
                         目前設定：{activeProfile.config.rows} 行 × {activeProfile.config.cols} 列
                         = {activeProfile.config.rows * activeProfile.config.cols} 個抽屜，
-                        最多可放 {activeProfile.config.rows * activeProfile.config.cols * 2} 味藥材
+                        每格 {activeProfile.config.slotCount ?? 2} 個藥材槽，
+                        最多可放 {activeProfile.config.rows * activeProfile.config.cols * (activeProfile.config.slotCount ?? 2)} 味藥材
                       </div>
                       <button onClick={handleSaveConfig}
                         className="mt-6 px-6 py-2 text-sm border border-[var(--vermilion)]/40 text-[var(--vermilion)] hover:bg-[var(--vermilion)]/10 transition-colors">
@@ -907,12 +959,29 @@ export default function AdminPage() {
                   min={0} className="w-20 px-2 py-1.5 border border-[var(--label-border)] bg-transparent focus:outline-none focus:border-[var(--brass)] text-sm transition-colors text-center" />
               </div>
               <div className="flex items-center gap-3">
-                <label className="w-28 text-sm text-[var(--ink-light)] shrink-0">左/右</label>
+                <label className="w-28 text-sm text-[var(--ink-light)] shrink-0">槽位</label>
                 <select value={editingHerb.position.side}
-                  onChange={e => setEditingHerb(prev => prev ? { ...prev, position: { ...prev.position, side: e.target.value as 'left' | 'right' } } : prev)}
+                  onChange={e => setEditingHerb(prev => prev ? { ...prev, position: { ...prev.position, side: e.target.value as Herb['position']['side'] } } : prev)}
                   className="px-2 py-1.5 border border-[var(--label-border)] bg-[var(--rice-paper)] focus:outline-none focus:border-[var(--brass)] text-sm transition-colors">
-                  <option value="left">左</option>
-                  <option value="right">右</option>
+                  {(() => {
+                    const sc = activeProfile?.config.slotCount ?? 2;
+                    if (sc === 1) return <option value="center">居中</option>;
+                    if (sc === 2) return (<>
+                      <option value="left">左</option>
+                      <option value="right">右</option>
+                    </>);
+                    if (sc === 3) return (<>
+                      <option value="left">左（縱向）</option>
+                      <option value="top">上（橫向）</option>
+                      <option value="right">右（縱向）</option>
+                    </>);
+                    return (<>
+                      <option value="left">左（縱向）</option>
+                      <option value="top">上（橫向）</option>
+                      <option value="right">右（縱向）</option>
+                      <option value="bottom">下（橫向）</option>
+                    </>);
+                  })()}
                 </select>
               </div>
             </div>

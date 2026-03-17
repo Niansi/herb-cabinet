@@ -1,14 +1,17 @@
 'use client';
 
-import { Herb } from '@/lib/types';
+import { Herb, DrawerSlotSide } from '@/lib/types';
 
 interface HerbLabelProps {
   herb: Herb;
-  side: 'left' | 'right';
+  side: DrawerSlotSide;
   onAdd: (herb: Herb) => void;
 }
 
 export default function HerbLabel({ herb, side, onAdd }: HerbLabelProps) {
+  // 横向标签（top/bottom）采用横排文字，纵向/居中采用竖排文字
+  const isHorizontal = side === 'top' || side === 'bottom';
+
   return (
     <button
       className={`
@@ -21,9 +24,10 @@ export default function HerbLabel({ herb, side, onAdd }: HerbLabelProps) {
     >
       {/* 标签纸主体 */}
       <div
-        className="label-card relative px-2 py-4 bg-gradient-to-b from-[var(--label-tape)] to-[var(--label-aged)] border border-[var(--label-border)]"
+        className="label-card relative bg-gradient-to-b from-[var(--label-tape)] to-[var(--label-aged)] border border-[var(--label-border)]"
         style={{
-          minWidth: '38px',
+          minWidth: isHorizontal ? 'unset' : '38px',
+          padding: isHorizontal ? '4px 8px' : '16px 8px',
           backgroundImage: `
             linear-gradient(
               to bottom,
@@ -60,13 +64,14 @@ export default function HerbLabel({ herb, side, onAdd }: HerbLabelProps) {
           }}
         />
 
-        {/* 繁体字竖排 */}
+        {/* 药材名称 — 横向时横排，竖向/居中时竖排 */}
         <span
           className="block text-[var(--ink-black)] font-medium leading-tight tracking-wider select-none"
           style={{
-            writingMode: 'vertical-rl',
-            fontSize: 'clamp(13px, 1.5vw, 18px)',
+            writingMode: isHorizontal ? 'horizontal-tb' : 'vertical-rl',
+            fontSize: 'clamp(11px, 1.3vw, 16px)',
             textShadow: '0 1px 0 rgba(255,255,255,0.4)',
+            whiteSpace: isHorizontal ? 'nowrap' : undefined,
           }}
         >
           {herb.nameTraditional}

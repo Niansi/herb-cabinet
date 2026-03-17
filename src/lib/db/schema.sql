@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS cabinet_profiles (
   description TEXT,
   rows        INT NOT NULL DEFAULT 7,
   cols        INT NOT NULL DEFAULT 8,
+  slot_count  INT NOT NULL DEFAULT 2 CHECK (slot_count BETWEEN 1 AND 4),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS herbs (
   category         TEXT,
   pos_row          INT NOT NULL,
   pos_col          INT NOT NULL,
-  pos_side         TEXT NOT NULL CHECK (pos_side IN ('left','right'))
+  pos_side         TEXT NOT NULL CHECK (pos_side IN ('left','right','top','bottom','center'))
 );
 
 -- 处方表

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getDb } from '@/lib/db';
-import { CabinetProfile, Herb } from '@/lib/types';
+import { CabinetProfile, Herb, DrawerSlotCount } from '@/lib/types';
 
 // GET /api/cabinets - 获取当前用户所有药柜（含 herbs）
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
   const sql = getDb();
 
   const cabinets = await sql`
-    SELECT id, name, description, rows, cols, created_at
+    SELECT id, name, description, rows, cols, slot_count, created_at
     FROM cabinet_profiles
     WHERE user_id = ${userId}
     ORDER BY created_at ASC
@@ -28,16 +28,20 @@ export async function GET() {
 
   const profiles: CabinetProfile[] = (cabinets as Array<{
     id: string; name: string; description: string | null;
-    rows: number; cols: number; created_at: string;
+    rows: number; cols: number; slot_count: number | null; created_at: string;
   }>).map(c => ({
     id: c.id,
     name: c.name,
     description: c.description ?? undefined,
-    config: { rows: c.rows, cols: c.cols },
+    config: {
+      rows: c.rows,
+      cols: c.cols,
+      slotCount: ((c.slot_count ?? 2) as DrawerSlotCount),
+    },
     herbs: (herbs as Array<{
       id: string; cabinet_id: string; name: string; name_traditional: string;
       price_per_gram: string; category: string | null;
-      pos_row: number; pos_col: number; pos_side: 'left' | 'right';
+      pos_row: number; pos_col: number; pos_side: string;
     }>)
       .filter(h => h.cabinet_id === c.id)
       .map(h => ({
@@ -46,7 +50,7 @@ export async function GET() {
         nameTraditional: h.name_traditional,
         pricePerGram: parseFloat(h.price_per_gram),
         category: h.category ?? undefined,
-        position: { row: h.pos_row, col: h.pos_col, side: h.pos_side },
+        position: { row: h.pos_row, col: h.pos_col, side: h.pos_side as Herb['position']['side'] },
       } as Herb)),
     createdAt: c.created_at,
   }));
@@ -61,8 +65,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const userId = session.user.id;
-  const { name, description, rows, cols } = await req.json() as {
-    name: string; description?: string; rows?: number; cols?: number;
+  const { name, description, rows, cols, slotCount } = await req.json() as {
+    name: string; description?: string; rows?: number; cols?: number; slotCount?: number;
   };
 
   if (!name?.trim()) {
@@ -71,12 +75,20 @@ export async function POST(req: NextRequest) {
 
   const sql = getDb();
   const id = `cabinet-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const sc = slotCount ?? 2;
   await sql`
-    INSERT INTO cabinet_profiles (id, user_id, name, description, rows, cols)
-    VALUES (${id}, ${userId}, ${name.trim()}, ${description ?? null}, ${rows ?? 7}, ${cols ?? 8})
+    INSERT INTO cabinet_profiles (id, user_id, name, description, rows, cols, slot_count)
+    VALUES (${id}, ${userId}, ${name.trim()}, ${description ?? null}, ${rows ?? 7}, ${cols ?? 8}, ${sc})
   `;
 
-  return NextResponse.json({ id, name: name.trim(), description: description ?? null, config: { rows: rows ?? 7, cols: cols ?? 8 }, herbs: [], createdAt: new Date().toISOString() });
+  return NextResponse.json({
+    id,
+    name: name.trim(),
+    description: description ?? null,
+    config: { rows: rows ?? 7, cols: cols ?? 8, slotCount: sc },
+    herbs: [],
+    createdAt: new Date().toISOString(),
+  });
 }
 
 // PUT /api/cabinets - 批量保存所有药柜（含 herbs）
@@ -91,16 +103,18 @@ export async function PUT(req: NextRequest) {
   const sql = getDb();
 
   for (const profile of profiles) {
+    const sc = profile.config.slotCount ?? 2;
     // Upsert cabinet profile
     await sql`
-      INSERT INTO cabinet_profiles (id, user_id, name, description, rows, cols, created_at)
+      INSERT INTO cabinet_profiles (id, user_id, name, description, rows, cols, slot_count, created_at)
       VALUES (${profile.id}, ${userId}, ${profile.name}, ${profile.description ?? null},
-              ${profile.config.rows}, ${profile.config.cols}, ${profile.createdAt})
+              ${profile.config.rows}, ${profile.config.cols}, ${sc}, ${profile.createdAt})
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         description = EXCLUDED.description,
         rows = EXCLUDED.rows,
-        cols = EXCLUDED.cols
+        cols = EXCLUDED.cols,
+        slot_count = EXCLUDED.slot_count
     `;
 
     // 删除该药柜的所有旧药材，再重新插入

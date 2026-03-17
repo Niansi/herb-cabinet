@@ -52,7 +52,7 @@ export function exportCabinetToExcel(profile: CabinetProfile): void {
 
 export interface ImportPreview {
   herbs: Herb[];
-  config?: { rows: number; cols: number };
+  config?: { rows: number; cols: number; slotCount?: number };
   name?: string;
   description?: string;
   error?: string;

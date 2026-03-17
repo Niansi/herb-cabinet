@@ -120,18 +120,17 @@ export function buildDrawerGrid(profile: CabinetProfile): DrawerCell[][] {
     const row: DrawerCell[] = [];
     for (let c = 0; c < config.cols; c++) {
       const cell: DrawerCell = { row: r, col: c };
-      const left = herbs.find(
-        h => h.position.row === r
-          && h.position.col === c
-          && h.position.side === 'left'
-      );
-      const right = herbs.find(
-        h => h.position.row === r
-          && h.position.col === c
-          && h.position.side === 'right'
-      );
-      if (left) cell.left = left;
-      if (right) cell.right = right;
+      const findHerb = (side: string) =>
+        herbs.find(
+          h => h.position.row === r
+            && h.position.col === c
+            && h.position.side === side
+        );
+      cell.left = findHerb('left');
+      cell.right = findHerb('right');
+      cell.top = findHerb('top');
+      cell.bottom = findHerb('bottom');
+      cell.center = findHerb('center');
       row.push(cell);
     }
     grid.push(row);

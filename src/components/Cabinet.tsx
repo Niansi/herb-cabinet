@@ -234,6 +234,7 @@ export default function Cabinet({ grid, config, cabinetName, onAddHerb, hasPrev,
                 <DrawerComponent
                   key={`${ri}-${ci}`}
                   cell={cell}
+                  slotCount={config.slotCount ?? 2}
                   onAddHerb={onAddHerb}
                 />
               ))

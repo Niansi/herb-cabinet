@@ -3,6 +3,7 @@ import { Herb, CabinetConfig, CabinetProfile } from './types';
 export const DEFAULT_CABINET_CONFIG: CabinetConfig = {
   rows: 7,
   cols: 8,
+  slotCount: 2,
 };
 
 // ─── 中草药柜 预置药材 ─────────────────────────────────────────────────────────
@@ -207,7 +208,7 @@ export const DEFAULT_PROFILES: CabinetProfile[] = [
     id: 'cabinet-herb',
     name: '中草藥櫃',
     description: '常用中草藥，生品為主',
-    config: { rows: 7, cols: 8 },
+    config: { rows: 7, cols: 8, slotCount: 2 },
     herbs: DEFAULT_HERBS,
     createdAt: '2024-01-01T00:00:00.000Z',
   },
@@ -215,7 +216,7 @@ export const DEFAULT_PROFILES: CabinetProfile[] = [
     id: 'cabinet-pian',
     name: '飲片櫃',
     description: '炮製加工後的飲片',
-    config: { rows: 4, cols: 8 },
+    config: { rows: 4, cols: 8, slotCount: 2 },
     herbs: DEFAULT_PIAN_HERBS,
     createdAt: '2024-01-01T00:00:00.000Z',
   },

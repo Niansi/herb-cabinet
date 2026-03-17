@@ -1,12 +1,26 @@
+/** 每個抽屜格子中的藥材槽數量模式 */
+export type DrawerSlotCount = 1 | 2 | 3 | 4;
+
+/**
+ * 格子槽位置：
+ * slotCount=1: 'center'
+ * slotCount=2: 'left' | 'right'（縱向）
+ * slotCount=3: 'left' | 'top' | 'right'（左右縱向，上橫向）
+ * slotCount=4: 'left' | 'top' | 'right' | 'bottom'（左右縱向，上下橫向）
+ */
+export type DrawerSlotSide = 'left' | 'right' | 'top' | 'bottom' | 'center';
+
 export interface CabinetConfig {
   rows: number;
   cols: number;
+  /** 每個抽屜格子的藥材槽數量（1-4），預設 2 */
+  slotCount: DrawerSlotCount;
 }
 
 export interface HerbPosition {
   row: number;
   col: number;
-  side: 'left' | 'right';
+  side: DrawerSlotSide;
 }
 
 export interface Herb {
@@ -36,8 +50,14 @@ export interface Prescription {
 export interface DrawerCell {
   row: number;
   col: number;
+  /** slotCount=2 時使用 */
   left?: Herb;
   right?: Herb;
+  /** slotCount=3/4 時使用 */
+  top?: Herb;
+  bottom?: Herb;
+  /** slotCount=1 時使用 */
+  center?: Herb;
 }
 
 /** 杂项收费项 */

@@ -1,14 +1,19 @@
 'use client';
 
-import { DrawerCell, Herb } from '@/lib/types';
+import { DrawerCell, Herb, DrawerSlotCount } from '@/lib/types';
 import HerbLabel from './HerbLabel';
 
 interface DrawerProps {
   cell: DrawerCell;
+  slotCount: DrawerSlotCount;
   onAddHerb: (herb: Herb) => void;
 }
 
-export default function Drawer({ cell, onAddHerb }: DrawerProps) {
+function EmptySlot({ className }: { className?: string }) {
+  return <div className={`w-full h-full ${className ?? ''}`} />;
+}
+
+export default function Drawer({ cell, slotCount, onAddHerb }: DrawerProps) {
   return (
     <div
       className={`
@@ -45,22 +50,95 @@ export default function Drawer({ cell, onAddHerb }: DrawerProps) {
         }}
       />
 
-      {/* 左右药材标签 */}
+      {/* 内部布局 — 根据 slotCount 渲染 */}
       <div className="relative flex w-full h-full z-10">
-        <div className="flex-1 flex items-center justify-center">
-          {cell.left ? (
-            <HerbLabel herb={cell.left} side="left" onAdd={onAddHerb} />
-          ) : (
-            <div className="w-full h-full" />
-          )}
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          {cell.right ? (
-            <HerbLabel herb={cell.right} side="right" onAdd={onAddHerb} />
-          ) : (
-            <div className="w-full h-full" />
-          )}
-        </div>
+        {slotCount === 1 && (
+          /* 居中展示 1 个标签 */
+          <div className="flex-1 flex items-center justify-center">
+            {cell.center
+              ? <HerbLabel herb={cell.center} side="center" onAdd={onAddHerb} />
+              : <EmptySlot />}
+          </div>
+        )}
+
+        {slotCount === 2 && (
+          /* 左1右1，纵向 */
+          <>
+            <div className="flex-1 flex items-center justify-center">
+              {cell.left
+                ? <HerbLabel herb={cell.left} side="left" onAdd={onAddHerb} />
+                : <EmptySlot />}
+            </div>
+            <div className="flex-1 flex items-center justify-center">
+              {cell.right
+                ? <HerbLabel herb={cell.right} side="right" onAdd={onAddHerb} />
+                : <EmptySlot />}
+            </div>
+          </>
+        )}
+
+        {slotCount === 3 && (
+          /* 左上右：左右纵向，上横向 */
+          <>
+            {/* 左侧：纵向 */}
+            <div className="flex items-center justify-center"
+              style={{ width: '30%' }}>
+              {cell.left
+                ? <HerbLabel herb={cell.left} side="left" onAdd={onAddHerb} />
+                : <EmptySlot />}
+            </div>
+            {/* 中间：上方横向 */}
+            <div className="flex flex-col flex-1">
+              <div className="flex-1 flex items-center justify-center border-b border-[var(--wood-dark)]/30">
+                {cell.top
+                  ? <HerbLabel herb={cell.top} side="top" onAdd={onAddHerb} />
+                  : <EmptySlot />}
+              </div>
+              {/* 中间下半区留空 */}
+              <div className="flex-1" />
+            </div>
+            {/* 右侧：纵向 */}
+            <div className="flex items-center justify-center"
+              style={{ width: '30%' }}>
+              {cell.right
+                ? <HerbLabel herb={cell.right} side="right" onAdd={onAddHerb} />
+                : <EmptySlot />}
+            </div>
+          </>
+        )}
+
+        {slotCount === 4 && (
+          /* 左上右下：左右纵向，上下横向 */
+          <>
+            {/* 左侧：纵向 */}
+            <div className="flex items-center justify-center"
+              style={{ width: '28%' }}>
+              {cell.left
+                ? <HerbLabel herb={cell.left} side="left" onAdd={onAddHerb} />
+                : <EmptySlot />}
+            </div>
+            {/* 中间：上下横向 */}
+            <div className="flex flex-col flex-1">
+              <div className="flex-1 flex items-center justify-center border-b border-[var(--wood-dark)]/30">
+                {cell.top
+                  ? <HerbLabel herb={cell.top} side="top" onAdd={onAddHerb} />
+                  : <EmptySlot />}
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                {cell.bottom
+                  ? <HerbLabel herb={cell.bottom} side="bottom" onAdd={onAddHerb} />
+                  : <EmptySlot />}
+              </div>
+            </div>
+            {/* 右侧：纵向 */}
+            <div className="flex items-center justify-center"
+              style={{ width: '28%' }}>
+              {cell.right
+                ? <HerbLabel herb={cell.right} side="right" onAdd={onAddHerb} />
+                : <EmptySlot />}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 黄铜拉手 */}
