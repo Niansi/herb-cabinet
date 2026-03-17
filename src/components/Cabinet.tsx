@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useCallback } from 'react';
 import { DrawerCell, Herb, CabinetConfig } from '@/lib/types';
 import DrawerComponent from './Drawer';
 
@@ -11,8 +12,56 @@ interface CabinetProps {
 }
 
 export default function Cabinet({ grid, config, cabinetName, onAddHerb }: CabinetProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const scrollLeft = useRef(0);
+  const scrollTop = useRef(0);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    startX.current = e.pageX - el.offsetLeft;
+    startY.current = e.pageY - el.offsetTop;
+    scrollLeft.current = el.scrollLeft;
+    scrollTop.current = el.scrollTop;
+    el.style.cursor = 'grabbing';
+    el.style.userSelect = 'none';
+  }, []);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const y = e.pageY - el.offsetTop;
+    el.scrollLeft = scrollLeft.current - (x - startX.current);
+    el.scrollTop = scrollTop.current - (y - startY.current);
+  }, []);
+
+  const onMouseUp = useCallback(() => {
+    isDragging.current = false;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.style.cursor = 'grab';
+    el.style.userSelect = '';
+  }, []);
+
+  const onMouseLeave = useCallback(() => {
+    if (isDragging.current) {
+      isDragging.current = false;
+      const el = scrollRef.current;
+      if (!el) return;
+      el.style.cursor = 'grab';
+      el.style.userSelect = '';
+    }
+  }, []);
+
   return (
-    <div className="relative">
+    <div className="relative inline-flex flex-col max-w-full min-w-0">
       {/* 药柜标题牌匾 */}
       <div className="flex justify-center mb-3">
         <div
@@ -91,7 +140,7 @@ export default function Cabinet({ grid, config, cabinetName, onAddHerb }: Cabine
 
       {/* 药柜主体 */}
       <div
-        className="relative p-3 md:p-4 wood-texture"
+        className="relative wood-texture"
         style={{
           background: `linear-gradient(
             180deg,
@@ -121,22 +170,39 @@ export default function Cabinet({ grid, config, cabinetName, onAddHerb }: Cabine
           }}
         />
 
-        {/* 网格 */}
+        {/* 可滚动区域 — 内容放得下时自然大小；放不下时 max-h/max-w 触发滚动 */}
         <div
-          className="grid gap-[3px] md:gap-1"
+          ref={scrollRef}
+          className="overflow-auto p-3 md:p-4"
           style={{
-            gridTemplateColumns: `repeat(${config.cols}, 1fr)`,
+            cursor: 'grab',
+            maxHeight: 'var(--cabinet-max-h, none)',
+            maxWidth: '100%',
+            width: 'max-content',
           }}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseLeave}
         >
-          {grid.map((row, ri) =>
-            row.map((cell, ci) => (
-              <DrawerComponent
-                key={`${ri}-${ci}`}
-                cell={cell}
-                onAddHerb={onAddHerb}
-              />
-            ))
-          )}
+          {/* 网格 — 宽度由内容决定，当超出容器时触发横向滚动 */}
+          <div
+            className="grid gap-[3px] md:gap-1"
+            style={{
+              gridTemplateColumns: `repeat(${config.cols}, minmax(120px, 150px))`,
+              width: 'max-content',
+            }}
+          >
+            {grid.map((row, ri) =>
+              row.map((cell, ci) => (
+                <DrawerComponent
+                  key={`${ri}-${ci}`}
+                  cell={cell}
+                  onAddHerb={onAddHerb}
+                />
+              ))
+            )}
+          </div>
         </div>
 
         {/* 柜底铜装饰线 */}
